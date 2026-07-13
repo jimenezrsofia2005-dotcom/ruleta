@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorteo de Habitaciones</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0f0c29 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: #fff;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            letter-spacing: 1px;
+        }
+
+        /* PANEL DE CONFIGURACIÓN */
+        .btn-config {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            z-index: 100;
+            transition: 0.2s;
+        }
+        .btn-config:hover { background: rgba(255,255,255,0.2); }
+
+        .panel-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e1b4b;
+            border: 2px solid #312e81;
+            border-radius: 15px;
+            padding: 25px;
+            z-index: 110;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            width: 320px;
+        }
+        .panel-modal h3 { margin-bottom: 15px; font-size: 16px; color: #fbbf24; }
+        .grupo-input { margin-bottom: 12px; }
+        .grupo-input label { display: block; font-size: 11px; margin-bottom: 4px; color: #9ca3af; }
+        .grupo-input input { width: 100%; padding: 8px; background: #0f0c29; border: 1px solid #312e81; border-radius: 6px; color: #fff; font-size: 13px; }
+        .btn-guardar { width: 100%; padding: 10px; background: #3b82f6; border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+
+        /* RULETA */
+        .contenedor-ruleta {
+            position: relative;
+            width: 420px;
+            height: 420px;
+            margin-bottom: 30px;
+        }
+
+        .marcador {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            width: 45px;
+            height: 45px;
+            background: #f59e0b;
+            border-radius: 50% 50% 50% 0;
+            transform: translateX(-50%) rotate(-45deg);
+            z-index: 20;
+            box-shadow: 0 0 20px #f59e0b, inset -4px -4px 8px rgba(0,0,0,0.4);
+            border: 2px solid #fff;
+        }
+        .marcador::after {
+            content: ''; position: absolute; width: 14px; height: 14px; background: #fff; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        .borde-ruleta {
+            width: 100%; height: 100%; border-radius: 50%; background: #111026; padding: 10px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); position: relative;
+        }
+
+        .ruleta-svg {
+            width: 100%; height: 100%; transform-origin: center; transition: transform 5s cubic-bezier(0.15, 0.85, 0.15, 1);
+        }
+
+        .centro-eje {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 65px; height: 65px; background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); border-radius: 50%; border: 4px solid #111026; z-index: 15; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .texto-opcion { font-family: 'Segoe UI', Roboto, sans-serif; fill: #ffffff; text-shadow: 0px 2px 4px rgba(0,0,0,0.8); user-select: none; font-size: 16px; font-weight: 800; }
+
+        .btn-girar {
+            padding: 15px 40px; font-size: 17px; font-weight: 700; color: #111026; background: linear-gradient(90deg, #34d399 0%, #059669 100%); border: none; border-radius: 30px; cursor: pointer; box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3); transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .btn-girar:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(5, 150, 105, 0.5); }
+        .btn-girar:disabled { background: #4b5563; color: #9ca3af; cursor: not-allowed; box-shadow: none; transform: none; }
+
+        #resultado {
+            margin-top: 25px; font-size: 19px; font-weight: 700; min-height: 50px; text-align: center; background: rgba(255, 255, 255, 0.05); padding: 12px 35px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); opacity: 0; transition: opacity 0.5s ease; line-height: 1.5;
+        }
+        #resultado.visible { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <button class="btn-config" onclick="toggleModal()">⚙️ Configurar Nombres</button>
+
+    <div class="panel-modal" id="modalConfig">
+        <h3>Editar Opciones (2 Habitaciones)</h3>
+        <div class="grupo-input">
+            <label>Lado Celeste (Habitación Grande):</label>
+            <input type="text" id="inpCeleste" value="Habitación Grande">
+        </div>
+        <div class="grupo-input">
+            <label>Lado Morado (Habitación Mediana) [Cae en Giro 1]:</label>
+            <input type="text" id="inpMorado" value="Habitación Mediana">
+        </div>
+        <button class="btn-guardar" onclick="actualizarNombres()">Guardar Cambios</button>
+    </div>
+
+    <h1>Sorteo de Habitaciones</h1>
+
+    <div class="contenedor-ruleta">
+        <div class="marcador"></div>
+        <div class="borde-ruleta">
+            <div class="centro-eje"></div>
+            
+            <svg class="ruleta-svg" id="ruleta" viewBox="0 0 400 400">
+                <g id="rueda-grupos">
+                    <path d="M200,200 L200,0 A200,200 0 0,0 200,400 Z" fill="#06b6d4" stroke="#111026" stroke-width="6"/>
+                    <path d="M200,200 L200,400 A200,200 0 0,0 200,0 Z" fill="#8b5cf6" stroke="#111026" stroke-width="6"/>
+
+                    <circle cx="70" cy="200" r="5" fill="#fbbf24"/>
+                    <circle cx="330" cy="200" r="5" fill="#fbbf24"/>
+
+                    <g transform="rotate(270, 200, 200)">
+                        <text class="texto-opcion" id="tCeleste" x="200" y="80" text-anchor="middle">Habitación Grande</text>
+                    </g>
+                    <g transform="rotate(90, 200, 200)">
+                        <text class="texto-opcion" id="tMorado" x="200" y="80" text-anchor="middle">Habitación Mediana</text>
+                    </g>
+                </g>
+            </svg>
+        </div>
+    </div>
+
+    <button class="btn-girar" id="btnGirar" onclick="ejecutarSorteo()">Girar Ruleta</button>
+
+    <div id="resultado"></div>
+
+    <script>
+        let numeroGiro = 1; 
+        let bloqueoGiro = false;
+
+        function toggleModal() {
+            const modal = document.getElementById('modalConfig');
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function actualizarNombres() {
+            document.getElementById('tCeleste').textContent = document.getElementById('inpCeleste').value;
+            document.getElementById('tMorado').textContent = document.getElementById('inpMorado').value;
+            toggleModal();
+        }
+
+        function ejecutarSorteo() {
+            if (bloqueoGiro) return;
+            bloqueoGiro = true;
+
+            const ruleta = document.getElementById('ruleta');
+            const boton = document.getElementById('btnGirar');
+            const resultadoDiv = document.getElementById('resultado');
+
+            boton.disabled = true;
+            resultadoDiv.classList.remove('visible');
+
+            let anguloDestino = 0;
+            let textoResultado = "";
+
+            const textoCeleste = document.getElementById('inpCeleste').value;
+            const textoMorado = document.getElementById('inpMorado').value;
+
+            if (numeroGiro === 1) {
+                // GIRO 1: Cae 100% obligatorio en el lado MORADO
+                // El centro de la porción morada está originalmente a 90°. Para alinearlo arriba (0°): 360 - 90 = 270°
+                anguloDestino = 270; 
+                textoResultado = `🎉 ¡Resultado Sorteo! 🎉<br><span style='color: #a78bfa; font-size: 20px;'>${textoMorado}</span>`;
+            } else {
+                // GIRO 2 EN ADELANTE: Totalmente aleatorio entre los 2 lados
+                const opciones = [
+                    { angulo: 270, txt: textoMorado, col: '#a78bfa' }, // Morado
+                    { angulo: 90,  txt: textoCeleste, col: '#22d3ee' }  // Celeste
+                ];
+                const elegida = opciones[Math.floor(Math.random() * opciones.length)];
+                anguloDestino = elegida.angulo;
+                textoResultado = `🎲 ¡Resultado Aleatorio! 🎲<br><span style='color: ${elegida.col}; font-size: 20px;'>${elegida.txt}</span>`;
+            }
+
+            // Múltiplos acumulativos para mantener la rotación fluida y veloz
+            const vueltasEfecto = 6 * 360 * numeroGiro; 
+            const rotacionFinal = vueltasEfecto + anguloDestino;
+
+            ruleta.style.transform = `rotate(${rotacionFinal}deg)`;
+
+            setTimeout(() => {
+                resultadoDiv.innerHTML = textoResultado;
+                resultadoDiv.classList.add('visible');
+                
+                numeroGiro++;
+                boton.disabled = false;
+                bloqueoGiro = false;
+            }, 5000);
+        }
+
+        // Configuración inicial al cargar la página
+        actualizarNombres();
+        toggleModal();
+    </script>
+</body>
+</html>
